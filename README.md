@@ -27,7 +27,7 @@
 | --- | --- |
 | 前端 | React 19 + TypeScript + Vite 8 |
 | 样式 | 原生 CSS（`src/styles.css`，CSS 变量 + 深色主题） |
-| 后端 | Deno（Deno Deploy / `Deno.serve`）+ TypeScript |
+| 后端 | Deno 运行时 + TypeScript（`Deno.serve`、`npm:` 说明符、`Deno.env`） |
 | 存储 | Supabase（Postgres，REST via `@supabase/supabase-js`） |
 | 天气 | Open-Meteo（无需 key） |
 | 音频 | Web Audio API 程序化合成 |
@@ -80,7 +80,7 @@
 
 ## 本地开发
 
-需要 Node 20+（前端）与 Deno 1.40+（后端）。
+需要 Node 20+（前端）与 Deno 1.40+（后端，`deno --version` 可确认）。
 
 ```bash
 # 1. 安装前端依赖
@@ -144,9 +144,11 @@ npm run check:function  # deno check functions/index.ts
 
 ## 部署
 
-- **前端**：Vite 静态产物（`dist/`）可部署到任意静态托管。
-- **后端**：`functions/index.ts` 使用 `Deno.serve`，可直接部署到 Deno Deploy；`adapter.mjs` 负责校验站点运行时注入的租户头，并把数据库请求限制在 Supabase REST 出口上。
-- 需要的环境变量：`SUPABASE_URL`、`SUPABASE_ANON_KEY`。
+- **前端**：Vite 静态产物（`dist/`）可部署到任意静态托管；站点平台同样可托管 `index.html` 与 `dist/`，并把 `/functions/v1/app` 路由到下面的函数。
+- **后端**：`functions/index.ts` 用 `Deno.serve` 启动，入口是 `serveSite(handler, { createClient, env })`。
+  - `functions/adapter.mjs` 是这套部署形态的参考适配层：宿主 Functions 运行时负责注入租户头 `x-instance-id`，适配层校验租户 UUID、把出口限制在 Supabase REST（只允许 `/rest/v1` 路径、剥离凭据与 Cookie、禁止重定向），任何异常统一返回 `database_runtime_unavailable`，不泄露原始报错。
+  - 环境变量：`SUPABASE_URL`、`SUPABASE_ANON_KEY`。
+  - 若要改部署到 Deno Deploy（或其他 Deno 运行时），需要自行提供等价的 `x-instance-id` 注入逻辑，或替换 `adapter.mjs` 为该平台要求的入口形式。
 
 ## License
 
